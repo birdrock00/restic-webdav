@@ -298,17 +298,24 @@ func BenchmarkMasterIndexAlloc(b *testing.B) {
 	rng := rand.New(rand.NewSource(0))
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		createRandomMasterIndex(b, rng, 10000, 5)
+	}
+}
+
+func BenchmarkMasterIndexMerge(b *testing.B) {
+	rng := rand.New(rand.NewSource(0))
+	b.ReportAllocs()
+
+	for b.Loop() {
+		createRandomMasterIndex(b, rng, 1000, 1000)
 	}
 }
 
 func BenchmarkMasterIndexLookupSingleIndex(b *testing.B) {
 	mIdx, lookupBh := createRandomMasterIndex(b, rand.New(rand.NewSource(0)), 1, 200000)
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		mIdx.Lookup(lookupBh)
 	}
 }
@@ -316,21 +323,16 @@ func BenchmarkMasterIndexLookupSingleIndex(b *testing.B) {
 func BenchmarkMasterIndexLookupMultipleIndex(b *testing.B) {
 	mIdx, lookupBh := createRandomMasterIndex(b, rand.New(rand.NewSource(0)), 100, 10000)
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		mIdx.Lookup(lookupBh)
 	}
 }
 
 func BenchmarkMasterIndexLookupSingleIndexUnknown(b *testing.B) {
-
 	lookupBh := restic.NewRandomBlobHandle()
 	mIdx, _ := createRandomMasterIndex(b, rand.New(rand.NewSource(0)), 1, 200000)
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		mIdx.Lookup(lookupBh)
 	}
 }
@@ -339,9 +341,7 @@ func BenchmarkMasterIndexLookupMultipleIndexUnknown(b *testing.B) {
 	lookupBh := restic.NewRandomBlobHandle()
 	mIdx, _ := createRandomMasterIndex(b, rand.New(rand.NewSource(0)), 100, 10000)
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		mIdx.Lookup(lookupBh)
 	}
 }
@@ -380,9 +380,7 @@ func BenchmarkMasterIndexLookupBlobSize(b *testing.B) {
 	rng := rand.New(rand.NewSource(0))
 	mIdx, lookupBh := createRandomMasterIndex(b, rand.New(rng), 5, 200000)
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		mIdx.LookupSize(lookupBh)
 	}
 }
@@ -391,9 +389,7 @@ func BenchmarkMasterIndexEach(b *testing.B) {
 	rng := rand.New(rand.NewSource(0))
 	mIdx, _ := createRandomMasterIndex(b, rand.New(rng), 5, 200000)
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		entries := 0
 		for range mIdx.Values() {
 			entries++
@@ -404,9 +400,7 @@ func BenchmarkMasterIndexEach(b *testing.B) {
 func BenchmarkMasterIndexGC(b *testing.B) {
 	mIdx, _ := createRandomMasterIndex(b, rand.New(rand.NewSource(0)), 100, 10000)
 
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		runtime.GC()
 	}
 	runtime.KeepAlive(mIdx)
