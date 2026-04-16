@@ -71,7 +71,7 @@ func changePassword(ctx context.Context, repo *repository.Repository, gopts glob
 		return err
 	}
 
-	id, err := repository.AddKey(ctx, repo, pw, "", "", repo.Key())
+	id, err := repository.AddKey(ctx, repo, pw, opts.Username, opts.Hostname, repo.Key())
 	if err != nil {
 		return errors.Fatalf("creating new key failed: %v", err)
 	}
