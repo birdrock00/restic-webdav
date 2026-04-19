@@ -55,7 +55,8 @@ func (f *file) Attr(_ context.Context, a *fuse.Attr) error {
 	a.Size = f.node.Size
 	a.Blocks = (f.node.Size + blockSize - 1) / blockSize
 	a.BlockSize = blockSize
-	a.Nlink = uint32(f.node.Links)
+	// present a link count > 0 to keep over-eager stat() .st_nlink checks (e.g., from Samba's smbd) happy
+	a.Nlink = max(uint32(1), uint32(f.node.Links))
 
 	if !f.root.cfg.OwnerIsRoot {
 		a.Uid = f.node.UID
