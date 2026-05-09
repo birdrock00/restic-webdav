@@ -1,7 +1,9 @@
-Enhancement: speed up index loading in `restic mount`
+Enhancement: speed up index loading
 
-`restic mount` now loads the index once on startup and incrementally loads only
+Loading the index for a large repository is now significantly faster. `restic mount`
+now also loads the index once on startup and incrementally loads only
 new index files afterwards. In addition, `restic mount` now loads snapshots
 before printing that the repository is being served.
 
 https://github.com/restic/restic/pull/5720
+https://github.com/restic/restic/pull/5713
