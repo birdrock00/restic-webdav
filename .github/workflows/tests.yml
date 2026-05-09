@@ -137,12 +137,14 @@ jobs:
           go run build.go
 
       - name: Minimal test
+        timeout-minutes: 3
         run: |
           ./restic init
           ./restic backup .
         env:
           RESTIC_REPOSITORY: ../testrepo
           RESTIC_PASSWORD: password
+          RESTIC_DEBUG_STACKTRACE_SIGINT: "true"
 
       - name: Run local Tests
         env:
