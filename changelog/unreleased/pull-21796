@@ -1,0 +1,6 @@
+Change: Update dependencies and require Go 1.25 or newer
+
+We have updated all dependencies. Restic now requires Go 1.25 or newer to build.
+
+https://github.com/restic/restic/pull/21796
+https://github.com/restic/restic/pull/5619
