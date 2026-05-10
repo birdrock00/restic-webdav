@@ -123,6 +123,16 @@ You can install it by adding this to your ``configuration.nix``:
         pkgs.restic
       ];
 
+Mise (Linux/MacOS/Windows)
+==========================
+
+If you are using `Mise <https://mise.jdx.dev>`__,
+you can install ``restic`` using this command:
+
+.. code-block:: console
+
+    $ mise use -g restic@latest
+
 OpenBSD
 =======
 
