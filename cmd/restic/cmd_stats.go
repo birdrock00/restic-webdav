@@ -456,8 +456,8 @@ func (s *sizeHistogram) Add(size uint64) {
 func (s sizeHistogram) String() string {
 	var out strings.Builder
 
-	out.WriteString(fmt.Sprintf("Count: %d\n", s.count))
-	out.WriteString(fmt.Sprintf("Total Size: %s\n", ui.FormatBytes(s.totalSize)))
+	fmt.Fprintf(&out, "Count: %d\n", s.count)
+	fmt.Fprintf(&out, "Total Size: %s\n", ui.FormatBytes(s.totalSize))
 
 	t := table.New()
 	t.AddColumn("Size", "{{.SizeRange}}")
@@ -506,7 +506,7 @@ func (s sizeHistogram) String() string {
 	_ = t.Write(&out)
 
 	if len(s.oversized) > 0 {
-		out.WriteString(fmt.Sprintf("Oversized: %v\n", s.oversized))
+		fmt.Fprintf(&out, "Oversized: %v\n", s.oversized)
 	}
 	return out.String()
 }
