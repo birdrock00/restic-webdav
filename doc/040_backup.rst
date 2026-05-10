@@ -315,6 +315,10 @@ Note that the snapshot metadata will always contain the absolute path.
     /user
     /user/work.txt
 
+.. note:: When switching between absolute and relative paths, the change detection in restic
+    will not be able to detect unmodified files. This is because the change detection depends
+    on the file path inside the snapshot.
+
 Dry Runs
 ********
 
