@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/restic/restic/internal/data"
 	"golang.org/x/sys/windows"
@@ -63,9 +62,8 @@ func TempFile(dir, prefix string) (f *os.File, err error) {
 	share := uint32(0) // prevent other processes from accessing the file
 	flags := uint32(windows.FILE_ATTRIBUTE_TEMPORARY | windows.FILE_FLAG_DELETE_ON_CLOSE)
 
-	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 10000; i++ {
-		randSuffix := strconv.Itoa(int(1e9 + rnd.Intn(1e9)%1e9))[1:]
+		randSuffix := strconv.Itoa(int(1e9 + rand.Intn(1e9)%1e9))[1:]
 		path := filepath.Join(dir, prefix+randSuffix)
 
 		ptr, err := windows.UTF16PtrFromString(path)
