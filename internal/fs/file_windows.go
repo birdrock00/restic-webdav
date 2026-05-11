@@ -76,6 +76,10 @@ func TempFile(dir, prefix string) (f *os.File, err error) {
 		if os.IsExist(err) {
 			continue
 		}
+		// Access denied error can occur if the tmp files conflict with each other.
+		if isAccessDeniedError(err) {
+			continue
+		}
 		return os.NewFile(uintptr(h), path), err
 	}
 
