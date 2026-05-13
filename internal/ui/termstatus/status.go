@@ -26,7 +26,7 @@ type Terminal struct {
 	errWriter        io.Writer
 	msg              chan message
 	status           chan status
-	lastStatusLen    int
+	lastStatus       []string
 	inputIsTerminal  bool
 	outputIsTerminal bool
 	canUpdateStatus  bool
@@ -219,12 +219,11 @@ func findUnchangedLines(curr, last []string) []bool {
 // run listens on the channels and updates the terminal screen.
 func (t *Terminal) run(ctx context.Context) {
 	var status []string
-	var lastWrittenStatus []string
 	for {
 		select {
 		case <-ctx.Done():
 			if !terminal.IsProcessBackground(t.fd) {
-				t.writeStatus([]string{}, nil)
+				t.writeStatus([]string{}, false)
 			}
 
 			return
@@ -255,8 +254,7 @@ func (t *Terminal) run(ctx context.Context) {
 				continue
 			}
 
-			t.writeStatus(status, nil)
-			lastWrittenStatus = append([]string{}, status...)
+			t.writeStatus(status, false)
 		case stat := <-t.status:
 			status = append(status[:0], stat.lines...)
 
@@ -265,28 +263,29 @@ func (t *Terminal) run(ctx context.Context) {
 				continue
 			}
 
-			if !slices.Equal(status, lastWrittenStatus) {
-				unchangedLines := findUnchangedLines(status, lastWrittenStatus)
-				t.writeStatus(status, unchangedLines)
-				// Copy the status slice to avoid aliasing
-				lastWrittenStatus = append([]string{}, status...)
-			}
+			t.writeStatus(status, true)
 		}
 	}
 }
 
-func (t *Terminal) writeStatus(status []string, unchanged []bool) {
-	statusLen := len(status)
-	status = append([]string{}, status...)
-	for i := len(status); i < t.lastStatusLen; i++ {
-		// clear no longer used status lines
-		status = append(status, "")
-		if i > 0 {
-			// all lines except the last one must have a line break
-			status[i-1] = status[i-1] + "\n"
+func (t *Terminal) writeStatus(status []string, skipUnchanged bool) {
+	var unchanged []bool
+	if skipUnchanged {
+		if slices.Equal(status, t.lastStatus) {
+			return
 		}
+		unchanged = findUnchangedLines(status, t.lastStatus)
 	}
-	t.lastStatusLen = statusLen
+
+	lastStatusLen := len(t.lastStatus)
+	// Copy the status slice to avoid aliasing
+	t.lastStatus = append([]string{}, status...)
+
+	// Extend to clear no longer used status lines
+	status = append([]string{}, status...)
+	for i := len(status); i < lastStatusLen; i++ {
+		status = append(status, "")
+	}
 
 	for i, line := range status {
 		if unchanged != nil && i < len(unchanged) && unchanged[i] {
@@ -307,6 +306,13 @@ func (t *Terminal) writeStatus(status []string, unchanged []bool) {
 		_, err := t.wr.Write([]byte(line))
 		if err != nil {
 			_, _ = fmt.Fprintf(t.errWriter, "write failed: %v\n", err)
+		}
+		// all lines except the last one must be followed by a line break
+		if i < len(status)-1 {
+			_, err := t.wr.Write([]byte("\n"))
+			if err != nil {
+				_, _ = fmt.Fprintf(t.errWriter, "write failed: %v\n", err)
+			}
 		}
 	}
 
@@ -399,9 +405,6 @@ func sanitizeLines(lines []string, width int) []string {
 		line = ui.Quote(line)
 		if width > 0 {
 			line = ui.Truncate(line, width-2)
-		}
-		if i < len(lines)-1 { // Last line gets no line break.
-			line += "\n"
 		}
 		lines[i] = line
 	}

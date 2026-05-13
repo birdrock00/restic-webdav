@@ -91,8 +91,8 @@ func TestSanitizeLines(t *testing.T) {
 	}{
 		{[]string{""}, 80, []string{""}},
 		{[]string{"too long test line"}, 10, []string{"too long"}},
-		{[]string{"too long test line", "text"}, 10, []string{"too long\n", "text"}},
-		{[]string{"too long test line", "second long test line"}, 10, []string{"too long\n", "second l"}},
+		{[]string{"too long test line", "text"}, 10, []string{"too long", "text"}},
+		{[]string{"too long test line", "second long test line"}, 10, []string{"too long", "second l"}},
 	}
 
 	for _, test := range tests {
