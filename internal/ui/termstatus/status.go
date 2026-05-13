@@ -238,7 +238,7 @@ func (t *Terminal) run(ctx context.Context) {
 				continue
 			}
 			if err := t.clearCurrentLine(t.wr, t.fd); err != nil {
-				_, _ = fmt.Fprintf(t.errWriter, "write failed: %v\n", err)
+				t.logWriteErr(err)
 				continue
 			}
 
@@ -250,7 +250,7 @@ func (t *Terminal) run(ctx context.Context) {
 			}
 
 			if _, err := io.WriteString(dst, msg.line); err != nil {
-				_, _ = fmt.Fprintf(t.errWriter, "write failed: %v\n", err)
+				t.logWriteErr(err)
 				continue
 			}
 
@@ -265,6 +265,12 @@ func (t *Terminal) run(ctx context.Context) {
 
 			t.writeStatus(status, true)
 		}
+	}
+}
+
+func (t *Terminal) logWriteErr(err error) {
+	if err != nil {
+		_, _ = fmt.Fprintf(t.errWriter, "write failed: %v\n", err)
 	}
 }
 
@@ -292,34 +298,24 @@ func (t *Terminal) writeStatus(status []string, skipUnchanged bool) {
 			// don't write unchanged lines every frame
 			if i < len(status)-1 {
 				// just move the cursor down to the next line
-				if err := t.moveCursorDown(t.wr, t.fd, 1); err != nil {
-					_, _ = fmt.Fprintf(t.errWriter, "write failed: %v\n", err)
-				}
+				t.logWriteErr(t.moveCursorDown(t.wr, t.fd, 1))
 			}
 			continue
 		}
 
-		if err := t.clearCurrentLine(t.wr, t.fd); err != nil {
-			_, _ = fmt.Fprintf(t.errWriter, "write failed: %v\n", err)
-		}
+		t.logWriteErr(t.clearCurrentLine(t.wr, t.fd))
 
 		_, err := t.wr.Write([]byte(line))
-		if err != nil {
-			_, _ = fmt.Fprintf(t.errWriter, "write failed: %v\n", err)
-		}
+		t.logWriteErr(err)
 		// all lines except the last one must be followed by a line break
 		if i < len(status)-1 {
 			_, err := t.wr.Write([]byte("\n"))
-			if err != nil {
-				_, _ = fmt.Fprintf(t.errWriter, "write failed: %v\n", err)
-			}
+			t.logWriteErr(err)
 		}
 	}
 
 	if len(status) > 0 {
-		if err := t.moveCursorUp(t.wr, t.fd, len(status)-1); err != nil {
-			_, _ = fmt.Fprintf(t.errWriter, "write failed: %v\n", err)
-		}
+		t.logWriteErr(t.moveCursorUp(t.wr, t.fd, len(status)-1))
 	}
 }
 
@@ -344,17 +340,15 @@ func (t *Terminal) runWithoutStatus(ctx context.Context) {
 				dst = t.wr
 			}
 
-			if _, err := io.WriteString(dst, msg.line); err != nil {
-				_, _ = fmt.Fprintf(t.errWriter, "write failed: %v\n", err)
-			}
+			_, err := io.WriteString(dst, msg.line)
+			t.logWriteErr(err)
 
 		case stat := <-t.status:
 			if !slices.Equal(stat.lines, lastStatus) {
 				for _, line := range stat.lines {
 					// Ensure that each message ends with exactly one newline.
-					if _, err := fmt.Fprintln(t.wr, strings.TrimRight(line, "\n")); err != nil {
-						_, _ = fmt.Fprintf(t.errWriter, "write failed: %v\n", err)
-					}
+					_, err := fmt.Fprintln(t.wr, strings.TrimRight(line, "\n"))
+					t.logWriteErr(err)
 				}
 				// Copy the status slice to avoid aliasing
 				lastStatus = append([]string{}, stat.lines...)
