@@ -25,7 +25,7 @@ command to restore the contents of the latest snapshot to
 
     $ restic -r /srv/restic-repo restore 79766175 --target /tmp/restore
     enter password for repository:
-    restoring <Snapshot of [/home/user/work] at 2015-05-08 21:40:19.884408621 +0200 CEST> to /tmp/restore
+    restoring snapshot of [/home/user/work] at 2015-05-08 21:40:19.884408621 +0200 CEST to /tmp/restore
 
 Use the word ``latest`` to restore the last backup. You can also combine
 ``latest`` with the ``--host`` and ``--path`` filters to choose the last
@@ -35,7 +35,7 @@ backup for a specific host, path or both:
 
     $ restic -r /srv/restic-repo restore latest --path /home/art --host luigi --target /tmp/restore
     enter password for repository:
-    restoring <Snapshot of [/home/art,/home/documents] at 2015-05-08 21:45:17.884408621 +0200 CEST> to /tmp/restore
+    restoring snapshot of [/home/art,/home/documents] at 2015-05-08 21:45:17.884408621 +0200 CEST to /tmp/restore
 
 Note that the ``--path`` option is only used to select the snapshot to restore, not to
 restrict the restore to a subset of files in the snapshot. This means that here the files
@@ -48,7 +48,7 @@ files in the snapshot. For example, to restore a single file:
 
     $ restic -r /srv/restic-repo restore 79766175 --target /tmp/restore --include /work/foo
     enter password for repository:
-    restoring <Snapshot of [/home/user/work] at 2015-05-08 21:40:19.884408621 +0200 CEST> to /tmp/restore
+    restoring snapshot of [/home/user/work] at 2015-05-08 21:40:19.884408621 +0200 CEST to /tmp/restore
 
 This will restore the file ``/work/foo`` to ``/tmp/restore/work/foo``.
 
@@ -63,7 +63,7 @@ of ``/work/foo``).
 
     $ restic -r /srv/restic-repo restore 79766175:/work --target /tmp/restore --include /foo
     enter password for repository:
-    restoring <Snapshot of [/home/user/work] at 2015-05-08 21:40:19.884408621 +0200 CEST> to /tmp/restore
+    restoring snapshot of [/home/user/work] at 2015-05-08 21:40:19.884408621 +0200 CEST to /tmp/restore
 
 This will restore the file ``/work/foo`` at the path ``/tmp/restore/foo``.
 
@@ -108,7 +108,7 @@ user and security namespaced extended attributes for files:
 
     $ restic -r /srv/restic-repo restore 79766175 --target /tmp/restore --include-xattr user.* --include-xattr security.*
     enter password for repository:
-    restoring <Snapshot of [/home/user/work] at 2015-05-08 21:40:19.884408621 +0200 CEST> to /tmp/restore
+    restoring snapshot of [/home/user/work] at 2015-05-08 21:40:19.884408621 +0200 CEST to /tmp/restore
 
 Restoring in-place
 ------------------
