@@ -406,3 +406,82 @@ system.
 
    # runuser -u restic /home/restic/bin/restic -r /tmp backup --exclude={/dev,/media,/mnt,/proc,/run,/sys,/tmp,/var/tmp} /
 
+
+***********************************************************
+Back up to an internal repository server over an SSH tunnel
+***********************************************************
+
+Idea
+====
+
+The idea is to run `REST-server <https://github.com/restic/rest-server>`__ on
+an internal host as the repository server and then back up to it from a remote
+restic client through a reverse SSH tunnel.
+
+With this approach, you do not need to publicly expose the repository server
+to which the backups are sent, as the restic client can instead connect to it
+through the SSH tunnel.
+
+An example use case for this method would be to create backups of a server,
+e.g. a VPS in the cloud, to a repository stored on your local computer.
+
+Running a local repository server
+=================================
+
+On the internal host, download and run the latest `release <https://github.com/restic/rest-server/releases>`__
+of REST-server to act as the repository server. In this example we are using
+the ``--no-auth`` option to not require authentication when connecting to it:
+
+.. code-block:: console
+
+   rest-server --listen localhost:8000 --path /path/to/repo --no-auth
+
+.. note:: The ``--listen localhost:8000`` option ensures that REST-server is only
+   accessible from the internal host.
+
+Creating a reverse SSH tunnel
+=============================
+
+On the repository server (the internal host), use ``ssh -R`` to create a
+"reverse" SSH tunnel that listens for connections on the *remote* side
+and forwards these back through the tunnel to the *local* side:
+
+.. code-block:: console
+
+   ssh -R 8000:localhost:8000 user@server
+
+.. note:: In this example, ``localhost`` refers to the local repository server,
+          and ``server`` refers to the remote system where restic is to be run.
+
+Running restic on the remote system
+===================================
+
+Now that the SSH session and tunnel is established, run restic on the remote
+system as usual, but with a repository URL that targets that system's side of
+the SSH tunnel, in this example ``localhost:8000``.
+
+This will make restic on the remote system connect to port ``8000`` on its
+``localhost``, where the SSH tunnel is listening, after which the connection
+is forwarded through the tunnel and finally reaches ``localhost:8000`` on the
+local side where REST-server is listening and acting as the repository server.
+
+To initialize the repository:
+
+.. code-block:: console
+
+   restic -r rest:http://localhost:8000/ init
+
+You can then use standard restic commands such as ``backup``, ``snapshots`` and
+``restore`` with the same repository URL and other options as usual.
+
+.. tip:: The tunnel will be active for the duration of the SSH session.
+
+Alternative: Running a local repository server using rclone
+===========================================================
+
+The program `rclone <https://rclone.org/>`__ can alternatively be used to run a local repository server
+instead of using REST-server.
+
+.. code-block:: console
+
+   rclone serve restic --addr localhost:8000 /path/to/repo
