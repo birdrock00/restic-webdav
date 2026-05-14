@@ -204,18 +204,6 @@ func (t *Terminal) Run(ctx context.Context) {
 	t.runWithoutStatus(ctx)
 }
 
-func findUnchangedLines(curr, last []string) []bool {
-	unchanged := make([]bool, len(curr))
-
-	for i := range min(len(curr), len(last)) {
-		if curr[i] == last[i] {
-			unchanged[i] = true
-		}
-	}
-
-	return unchanged
-}
-
 // run listens on the channels and updates the terminal screen.
 func (t *Terminal) run(ctx context.Context) {
 	var status []string
@@ -317,6 +305,18 @@ func (t *Terminal) writeStatus(status []string, skipUnchanged bool) {
 	if len(status) > 0 {
 		t.logWriteErr(t.moveCursorUp(t.wr, t.fd, len(status)-1))
 	}
+}
+
+func findUnchangedLines(curr, last []string) []bool {
+	unchanged := make([]bool, len(curr))
+
+	for i := range min(len(curr), len(last)) {
+		if curr[i] == last[i] {
+			unchanged[i] = true
+		}
+	}
+
+	return unchanged
 }
 
 // runWithoutStatus listens on the channels and just prints out the messages,
