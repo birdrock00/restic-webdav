@@ -29,15 +29,17 @@ command to restore the contents of the latest snapshot to
 
 Use the word ``latest`` to restore the last backup. You can also combine
 ``latest`` with the ``--host`` and ``--path`` filters to choose the last
-backup for a specific host, path or both.
+backup for a specific host, path or both:
 
 .. code-block:: console
 
-    $ restic -r /srv/restic-repo restore latest --target /tmp/restore --path "/home/art" --host luigi
+    $ restic -r /srv/restic-repo restore latest --path /home/art --host luigi --target /tmp/restore
     enter password for repository:
-    restoring <Snapshot of [/home/art] at 2015-05-08 21:45:17.884408621 +0200 CEST> to /tmp/restore
+    restoring <Snapshot of [/home/art,/home/documents] at 2015-05-08 21:45:17.884408621 +0200 CEST> to /tmp/restore
 
-The files will be restored to ``/tmp/restore/home/art``.
+Note that the ``--path`` option is only used to select the snapshot to restore, not to
+restrict the restore to a subset of files in the snapshot. This means that here the files
+will be restored to ``/tmp/restore/home/art`` and ``/tmp/restore/home/documents``.
 
 Use ``--exclude`` and ``--include`` to restrict the restore to a subset of
 files in the snapshot. For example, to restore a single file:
@@ -52,9 +54,10 @@ This will restore the file ``/work/foo`` to ``/tmp/restore/work/foo``.
 
 To only restore a specific subfolder, you can use the ``<snapshot>:<subfolder>``
 syntax, where ``snapshot`` is the ID of a snapshot (or the string ``latest``)
-and ``subfolder`` is a path within the snapshot.  This changes the root for the
-arguments to ``--include`` or ``--exclude``, they should be specified relative
-to ``subfolder``.
+and ``subfolder`` is a path within the snapshot. Note that the subfolder syntax
+also affects options like ``--include`` and ``--exclude``, such that their
+arguments should be specified relative to ``subfolder`` (e.g. ``/foo`` instead
+of ``/work/foo``).
 
 .. code-block:: console
 
@@ -62,7 +65,7 @@ to ``subfolder``.
     enter password for repository:
     restoring <Snapshot of [/home/user/work] at 2015-05-08 21:40:19.884408621 +0200 CEST> to /tmp/restore
 
-This will restore the file ``/work/foo`` to ``/tmp/restore/foo``.
+This will restore the file ``/work/foo`` at the path ``/tmp/restore/foo``.
 
 You can use the command ``restic ls latest`` or ``restic find foo`` to find the
 path to the file within the snapshot. This path you can then pass to
@@ -138,17 +141,6 @@ files that do not exist in the snapshot. For this, pass the ``--delete`` option 
 command. The command will then **delete all files** from the target directory that do not
 exist in the snapshot.
 
-With ``--delete``, ``--exclude`` has a dual purpose:
-
-* It will exclude files from being restored.  The exclude argument is taken
-  relative to the subfolder given with the snapshot (if any; otherwise ``/`` of
-  the snapshot.)
-* It will exclude files in the target directory from being deleted.  The exclude
-  argument is here relative to the target directory.
-
-The ``--delete`` option also allows overwriting a non-empty directory if the snapshot contains a
-file with the same name.
-
 .. warning::
 
     Always use the ``--dry-run -vv`` option to verify what would be deleted before running the actual
@@ -162,6 +154,9 @@ would only delete files within ``/tmp/restore/foo``.
 When using ``--target / --delete`` then the ``restore`` command only works if either an ``--include``
 or ``--exclude`` option is also specified. This ensures that one cannot accidentally delete
 the whole system.
+
+The ``--delete`` option also allows overwriting a non-empty directory if the snapshot contains a
+file with the same name.
 
 Dry run
 -------
