@@ -25,7 +25,7 @@ you can download and run without having to do additional installation work.
 
 Please see the :ref:`official_binaries` section below for various downloads.
 Official binaries can be updated in place by using the ``restic self-update``
-command. 
+command.
 
 The environment variable ``$GITHUB_ACCESS_TOKEN`` can be set to use a personal 
 access token when updating. This increases the rate limit through authenticated GitHub API 
@@ -123,7 +123,7 @@ You can install it by adding this to your ``configuration.nix``:
         pkgs.restic
       ];
 
-Mise (Linux/MacOS/Windows)
+Mise (Linux/macOS/Windows)
 ==========================
 
 If you are using `Mise <https://mise.jdx.dev>`__,
@@ -213,7 +213,7 @@ code available for download. Just download and run the one matching your system.
 
 On your first installation, if you desire, you can verify the integrity of your
 downloads by testing the SHA-256 checksums listed in ``SHA256SUMS`` and verifying
-the integrity of the file ``SHA256SUMS`` with the PGP signature in ``SHA256SUMS.asc``. 
+the integrity of the file ``SHA256SUMS`` with the PGP signature in ``SHA256SUMS.asc``.
 The PGP signature was created using the key (`0x91A6868BD3F7A907 <https://restic.net/gpg-key-alex.asc>`__):
 
 ::
@@ -351,18 +351,24 @@ Restic can write out man pages and bash/fish/zsh/powershell compatible autocompl
     $ ./restic generate --help
 
     The "generate" command writes automatically generated files (like the man pages
-    and the auto-completion files for bash, fish, zsh and powershell).
+    and the auto-completion files for bash, fish, powershell and zsh).
+
+    EXIT STATUS
+    ===========
+
+    Exit status is 0 if the command was successful.
+    Exit status is 1 if there was any error.
 
     Usage:
-      restic generate [flags] [command]
+      restic generate [flags]
 
     Flags:
-          --bash-completion file   write bash completion file
-          --fish-completion file   write fish completion file
-      -h, --help                   help for generate
-          --man directory          write man pages to directory
-          --powershell-completion  write powershell completion file
-          --zsh-completion file    write zsh completion file
+          --bash-completion file         write bash completion file (`-` for stdout)
+          --fish-completion file         write fish completion file (`-` for stdout)
+      -h, --help                         help for generate
+          --man directory                write man pages to directory
+          --powershell-completion file   write powershell completion file (`-` for stdout)
+          --zsh-completion file          write zsh completion file (`-` for stdout)
 
 Example for using sudo to write a bash completion script directly to the system-wide location:
 

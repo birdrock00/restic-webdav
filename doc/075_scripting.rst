@@ -54,7 +54,7 @@ environment variables, which are listed below.
     RESTIC_AWS_ASSUME_ROLE_ARN          Amazon IAM Role ARN to assume using discovered credentials
     RESTIC_AWS_ASSUME_ROLE_SESSION_NAME Session Name to use with the role assumption
     RESTIC_AWS_ASSUME_ROLE_EXTERNAL_ID  External ID to use with the role assumption
-    RESTIC_AWS_ASSUME_ROLE_POLICY       Inline Amazion IAM session policy
+    RESTIC_AWS_ASSUME_ROLE_POLICY       Inline Amazon IAM session policy
     RESTIC_AWS_ASSUME_ROLE_REGION       Region to use for IAM calls for the role assumption (default: us-east-1)
     RESTIC_AWS_ASSUME_ROLE_STS_ENDPOINT URL to the STS endpoint (default is determined based on RESTIC_AWS_ASSUME_ROLE_REGION). You generally do not need to set this, advanced use only.
 
@@ -69,6 +69,7 @@ environment variables, which are listed below.
 
     GOOGLE_PROJECT_ID                   Project ID for Google Cloud Storage
     GOOGLE_APPLICATION_CREDENTIALS      Application Credentials for Google Cloud Storage (e.g. $HOME/.config/gs-secret-restic-key.json)
+    GOOGLE_ACCESS_TOKEN                 Bearer access token for Google Cloud Storage (alternative to default application credentials)
 
     OS_AUTH_URL                         Auth URL for keystone authentication
     OS_REGION_NAME                      Region name for keystone authentication
@@ -150,7 +151,8 @@ a more specific description.
 +-----+----------------------------------------------------+
 | 2   | Go runtime error                                   |
 +-----+----------------------------------------------------+
-| 3   | ``backup`` command could not read some source data |
+| 3   | ``backup`` could not read some source data, or     |
+|     | ``forget`` could not remove one or more snapshots  |
 +-----+----------------------------------------------------+
 | 10  | Repository does not exist (since restic 0.17.0)    |
 +-----+----------------------------------------------------+
@@ -158,7 +160,7 @@ a more specific description.
 +-----+----------------------------------------------------+
 | 12  | Wrong password (since restic 0.17.1)               |
 +-----+----------------------------------------------------+
-| 130 | Restic was interrupted using SIGINT or SIGSTOP     |
+| 130 | Command was cancelled (e.g. SIGINT or SIGTERM)     |
 +-----+----------------------------------------------------+
 
 .. _JSON output:
@@ -359,9 +361,10 @@ check
 -----
 
 The ``check`` command uses the JSON lines format with the following message types.
+Error lines are JSON objects on stderr; when the command finishes, one JSON summary is printed on stdout.
 
-Status
-^^^^^^
+Summary
+^^^^^^^
 
 +--------------------------+------------------------------------------------------------------------------------------------+----------+
 | ``message_type``         | Always "summary"                                                                               | string   |
@@ -491,7 +494,7 @@ Match object
 +-----------------+----------------------------------------------+-------------+
 | ``links``       | Number of hardlinks                          | uint64      |
 +-----------------+----------------------------------------------+-------------+
-| ``link_target`` | Target of a symlink                          | string      |
+| ``linktarget``  | Target of a symlink                          | string      |
 +-----------------+----------------------------------------------+-------------+
 | ``uid``         | ID of owner                                  | uint32      |
 +-----------------+----------------------------------------------+-------------+
@@ -696,7 +699,7 @@ node
 +------------------+----------------------------+-------------+
 | ``mtime``        | Node modification time     | time.Time   |
 +------------------+----------------------------+-------------+
-| ``ctime``        | Node creation time         | time.Time   |
+| ``ctime``        | Node change time (ctime)   | time.Time   |
 +------------------+----------------------------+-------------+
 | ``inode``        | Inode number of node       | uint64      |
 +------------------+----------------------------+-------------+
@@ -826,7 +829,7 @@ The snapshots command returns a single JSON array with objects of the structure 
 
 SnapshotSummary object
 
-The contained statistics reflect the information at the point64 in time when the snapshot
+The contained statistics reflect the information at the point in time when the snapshot
 was created.
 
 +---------------------------+----------------------------------------------------+-----------+

@@ -27,9 +27,9 @@ command to restore the contents of the latest snapshot to
     enter password for repository:
     restoring snapshot of [/home/user/work] at 2015-05-08 21:40:19.884408621 +0200 CEST to /tmp/restore
 
-Use the word ``latest`` to restore the last backup. You can also combine
-``latest`` with the ``--host`` and ``--path`` filters to choose the last
-backup for a specific host, path or both:
+Use the word ``latest`` to restore the latest snapshot. You can also combine
+``latest`` with the ``--host`` and ``--path`` filters to choose the latest
+snapshot for a specific host, path or both:
 
 .. code-block:: console
 
@@ -41,51 +41,52 @@ Note that the ``--path`` option is only used to select the snapshot to restore, 
 restrict the restore to a subset of files in the snapshot. This means that here the files
 will be restored to ``/tmp/restore/home/art`` and ``/tmp/restore/home/documents``.
 
-Use ``--exclude`` and ``--include`` to restrict the restore to a subset of
-files in the snapshot. For example, to restore a single file:
+Use either ``--exclude`` or ``--include`` to restrict the restore to a subset of
+files in the snapshot (the two are mutually exclusive). For example, to restore a single file:
 
 .. code-block:: console
 
-    $ restic -r /srv/restic-repo restore 79766175 --target /tmp/restore --include /work/foo
+    $ restic -r /srv/restic-repo restore 79766175 --target /tmp/restore --include /home/user/work/foo
     enter password for repository:
     restoring snapshot of [/home/user/work] at 2015-05-08 21:40:19.884408621 +0200 CEST to /tmp/restore
 
-This will restore the file ``/work/foo`` to ``/tmp/restore/work/foo``.
+This will restore the file to ``/tmp/restore/home/user/work/foo``.
 
 To only restore a specific subfolder, you can use the ``<snapshot>:<subfolder>``
 syntax, where ``snapshot`` is the ID of a snapshot (or the string ``latest``)
 and ``subfolder`` is a path within the snapshot. Note that the subfolder syntax
 also affects options like ``--include`` and ``--exclude``, such that their
 arguments should be specified relative to ``subfolder`` (e.g. ``/foo`` instead
-of ``/work/foo``).
+of ``/home/user/work/foo``).
 
 .. code-block:: console
 
-    $ restic -r /srv/restic-repo restore 79766175:/work --target /tmp/restore --include /foo
+    $ restic -r /srv/restic-repo restore 79766175:/home/user/work --target /tmp/restore --include /foo
     enter password for repository:
     restoring snapshot of [/home/user/work] at 2015-05-08 21:40:19.884408621 +0200 CEST to /tmp/restore
 
-This will restore the file ``/work/foo`` at the path ``/tmp/restore/foo``.
+This will restore the file ``/home/user/work/foo`` to ``/tmp/restore/foo``.
 
 You can use the command ``restic ls latest`` or ``restic find foo`` to find the
-path to the file within the snapshot. This path you can then pass to
-``--include`` in verbatim to only restore the single file or directory.
+path to the file within the snapshot. Pass that path to ``--include`` verbatim
+when restoring the full snapshot; with ``<snapshot>:<subfolder>``, use a path relative
+to ``subfolder`` as in the example above.
 
-There are case insensitive variants of ``--exclude`` and ``--include`` called
+There are case-insensitive variants of ``--exclude`` and ``--include`` called
 ``--iexclude`` and ``--iinclude``. These options will behave the same way but
 ignore the casing of paths.
 
 There are also ``--include-file``, ``--exclude-file``, ``--iinclude-file`` and
 ``--iexclude-file`` flags that read the include and exclude patterns from a file.
 
-Restoring symbolic links on windows is only possible when the user has
-``SeCreateSymbolicLinkPrivilege`` privilege or is running as admin. This is a
-restriction of windows not restic.
+Restoring symbolic links on Windows is only possible when the user has the
+``SeCreateSymbolicLinkPrivilege`` privilege or is running as administrator. This is a
+restriction of Windows, not restic.
 
-Restoring full security descriptors on Windows is only possible when the user has
-``SeRestorePrivilege``, ``SeSecurityPrivilege`` and ``SeTakeOwnershipPrivilege`` 
-privilege or is running as admin. This is a restriction of Windows not restic.
-If either of these conditions are not met, only the DACL will be restored.
+Restoring full security descriptors on Windows is only possible when the user has the
+``SeRestorePrivilege``, ``SeSecurityPrivilege`` and ``SeTakeOwnershipPrivilege``
+privileges or is running as administrator. This is a restriction of Windows, not restic.
+If not all of these privileges are available, only the DACL is restored.
 
 By default, restic does not restore files as sparse. Use ``restore --sparse`` to
 enable the creation of sparse files if supported by the filesystem. Then restic
@@ -100,7 +101,7 @@ Restoring extended file attributes
 
 By default, all extended attributes for files are restored.
 
-Use only ``--exclude-xattr`` or ``--include-xattr`` to control which extended
+Use either ``--exclude-xattr`` or ``--include-xattr`` (not both) to control which extended
 attributes are restored for files in the snapshot. For example, to restore
 user and security namespaced extended attributes for files:
 
@@ -148,7 +149,7 @@ exist in the snapshot.
 
 When specifying ``--include`` or ``--exclude`` options, only files or directories matched by those
 options will be deleted. For example, the command
-``restic -r /srv/restic-repo restore 79766175:/work --target /tmp/restore --include /foo --delete``
+``restic -r /srv/restic-repo restore 79766175:/home/user/work --target /tmp/restore --include /foo --delete``
 would only delete files within ``/tmp/restore/foo``.
 
 When using ``--target / --delete`` then the ``restore`` command only works if either an ``--include``
@@ -168,7 +169,7 @@ restored files when specifying ``--verbose=2``.
 
 .. code-block:: console
 
-    $ restic restore --target /tmp/restore --dry-run --verbose=2 latest
+    $ restic -r /srv/restic-repo restore --target /tmp/restore --dry-run --verbose=2 latest
 
     unchanged /restic/internal/walker/walker.go with size 2.812 KiB
     updated   /restic/internal/walker/walker_test.go with size 11.143 KiB
@@ -209,7 +210,7 @@ On FreeBSD, you may need to install FUSE and load the kernel module (``kldload f
 
 Restic supports storage and preservation of hard links. However, since
 hard links exist in the scope of a filesystem by definition, restoring
-hard links from a fuse mount should be done by a program that preserves
+hard links from a FUSE mount should be done by a program that preserves
 hard links. A program that does so is ``rsync``, used with the option
 ``--hard-links``.
 
@@ -235,7 +236,7 @@ snapshots in a repository:
 .. code-block:: console
 
     $ restic -r /srv/restic-repo snapshots
-    ID        Date                 Host        Tags        Directory
+    ID        Date                 Host        Tags        Paths
     ----------------------------------------------------------------------
     562bfc5e  2018-07-14 20:18:01  mopped                  /home/user/file1
     bbacb625  2018-07-14 20:18:07  mopped                  /home/other/work
@@ -254,15 +255,15 @@ case, you can pass restic the snapshot ID of the snapshot you like to restore:
     $ restic -r /srv/restic-repo dump 098db9d5 production.sql | mysql
 
 Or you can pass restic a path that should be used for selecting the latest
-snapshot. The path must match the patch printed in the "Directory" column,
+snapshot. The path must match a path printed in the "Paths" column,
 e.g.:
 
 .. code-block:: console
 
     $ restic -r /srv/restic-repo dump --path /production.sql latest production.sql | mysql
 
-If a snapshot was backed up using relative paths, then the directory shown in the output
-of ``snapshots`` may differ from the directory structure in the snapshot.
+If a snapshot was backed up using relative paths, then the paths shown in the output
+of ``snapshots`` may differ from the path layout inside the snapshot.
 See :ref:`absolute-and-relative-paths` for details. Use ``ls`` to determine the correct path:
 
 .. code-block:: console
@@ -273,7 +274,7 @@ See :ref:`absolute-and-relative-paths` for details. Use ``ls`` to determine the 
     /other/work
 
 It is also possible to ``dump`` the contents of a whole folder structure to
-stdout. To retain the information about the files and folders Restic will
+stdout. To retain the information about the files and folders restic will
 output the contents in the tar (default) or zip format:
 
 .. code-block:: console
