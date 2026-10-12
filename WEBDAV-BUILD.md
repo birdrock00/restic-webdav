@@ -7,7 +7,9 @@ restic accesses WebDAV servers through its built-in `rclone` backend, but the
 official restic image does not ship the `rclone` binary, so WebDAV repositories
 fail there with "invalid backend". This project publishes
 `ghcr.io/<owner>/restic-webdav`: the **official upstream restic image** plus
-the `rclone` binary. The restic side is therefore always exactly the current
+the `rclone` binary (plus `curl`, which the official image also lacks and which
+backup-verification jobs need to POST results to a dashboard). The restic side
+is therefore always exactly the current
 upstream build - nothing is recompiled.
 
 ## Usage
