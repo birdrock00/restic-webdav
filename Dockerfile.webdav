@@ -18,4 +18,9 @@ FROM ghcr.io/restic/restic:${RESTIC_TAG}
 
 COPY --from=rclone /usr/local/bin/rclone /usr/local/bin/rclone
 
+# curl is not in the official restic image; backup verification jobs POST
+# JSON results to a dashboard and should not depend on apk/network at run
+# time. jq and wget (busybox) are already present in the base image.
+RUN apk add --no-cache curl
+
 ENTRYPOINT ["/usr/bin/restic"]

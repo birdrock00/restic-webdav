@@ -72,7 +72,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="webdav-${BUILD_DATE}"
-          NOTES="restic ${RESTIC_VERSION} image with rclone added for WebDAV access.
+          NOTES="restic ${RESTIC_VERSION} image with rclone (WebDAV backend) and curl added.
 
           Container images (linux/amd64, linux/arm64):
           * \`${IMAGE_NAME}:latest\`
