@@ -34,19 +34,10 @@ jobs:
             git merge --abort
           fi
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-
-      - name: Build restic with webdav backend
+      - name: Resolve upstream restic version
         run: |
-          set -euo pipefail
-          for arch in amd64 arm64; do
-            go run build.go -t webdav --goos linux --goarch "$arch" -o "restic.linux_${arch}"
-          done
-          ./restic.linux_amd64 version
-          echo "RESTIC_VERSION=$(./restic.linux_amd64 version | awk '{print $2}')" >> "$GITHUB_ENV"
+          docker pull --quiet ghcr.io/restic/restic:latest
+          echo "RESTIC_VERSION=$(docker run --rm --platform linux/amd64 --entrypoint /usr/bin/restic ghcr.io/restic/restic:latest version | awk '{print $2}')" >> "$GITHUB_ENV"
           echo "BUILD_DATE=$(date -u +%Y%m%d)" >> "$GITHUB_ENV"
 
       - name: Set up QEMU
@@ -81,16 +72,13 @@ jobs:
         run: |
           set -euo pipefail
           TAG="webdav-${BUILD_DATE}"
-          NOTES="restic ${RESTIC_VERSION} built with the optional webdav backend.
+          NOTES="restic ${RESTIC_VERSION} image with rclone added for WebDAV access.
 
-          Container images:
+          Container images (linux/amd64, linux/arm64):
           * \`${IMAGE_NAME}:latest\`
-          * \`${IMAGE_NAME}:${RESTIC_VERSION}-${BUILD_DATE}\`
-
-          Binaries include the upstream default build tags plus \`webdav\`."
+          * \`${IMAGE_NAME}:${RESTIC_VERSION}-${BUILD_DATE}\`"
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" \
               --title "restic+webdav ${RESTIC_VERSION} (${BUILD_DATE})" \
               --notes "$NOTES"
           fi
-          gh release upload "$TAG" restic.linux_amd64 restic.linux_arm64 --clobber

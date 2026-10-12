@@ -1,14 +1,21 @@
-# Container image for restic with the optional `webdav` backend compiled in.
+# restic image with WebDAV support.
 #
-# The restic binaries are built by the daily workflow with
-#   go run build.go -t webdav --goos linux --goarch <arch>
-# (upstream default build tags plus `webdav`) and copied into plain Alpine,
-# mirroring the layout of the official restic image (/usr/bin/restic).
-FROM alpine:3.22
+# restic reaches WebDAV servers through its built-in `rclone` backend, which
+# needs the rclone binary at runtime; the official restic image does not ship
+# it. This image is the official restic image plus the rclone binary, so the
+# restic side is always exactly the upstream build.
+#
+# Build args:
+#   RESTIC_TAG   tag of the upstream restic image (default: latest)
+#   RCLONE_IMAGE rclone image to take the binary from (default: rclone/rclone:latest)
 
-ARG TARGETARCH
-RUN apk add --no-cache ca-certificates openssh-client
+ARG RESTIC_TAG=latest
+ARG RCLONE_IMAGE=docker.io/rclone/rclone:latest
 
-COPY restic.linux_${TARGETARCH} /usr/bin/restic
+FROM ${RCLONE_IMAGE} AS rclone
+
+FROM ghcr.io/restic/restic:${RESTIC_TAG}
+
+COPY --from=rclone /usr/local/bin/rclone /usr/local/bin/rclone
 
 ENTRYPOINT ["/usr/bin/restic"]

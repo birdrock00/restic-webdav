@@ -1,37 +1,38 @@
-# restic + webdav daily builds
+# restic + WebDAV daily builds
 
-This repository is a fork of [restic](https://github.com/restic/restic). The
-upstream source is left untouched; it only adds daily builds that include the
-optional `webdav` backend, which is **not** compiled into the official restic
-binaries or container images (official builds use the `selfupdate` build tags
-only).
+This repository is a fork of [restic](https://github.com/restic/restic), used
+to publish a container image that supports WebDAV repositories.
 
-## What gets added
-
-* `Dockerfile.webdav` - Alpine-based image containing the restic binary built
-  with the `webdav` build tag.
-* `.github/workflows/daily-webdav-image.yml` - daily workflow that:
-  1. merges `master` from the upstream restic repository,
-  2. builds `linux/amd64` and `linux/arm64` binaries with
-     `go run build.go -t webdav` (upstream default tags plus `webdav`),
-  3. builds and pushes a multi-arch container image to the GitHub Container
-     Registry (`:latest`, `:<restic-version>`, `:<restic-version>-<YYYYMMDD>`),
-  4. publishes a daily GitHub release with the binaries.
+restic accesses WebDAV servers through its built-in `rclone` backend, but the
+official restic image does not ship the `rclone` binary, so WebDAV repositories
+fail there with "invalid backend". This project publishes
+`ghcr.io/<owner>/restic-webdav`: the **official upstream restic image** plus
+the `rclone` binary. The restic side is therefore always exactly the current
+upstream build - nothing is recompiled.
 
 ## Usage
 
-The image is a drop-in replacement for the official `restic/restic` image:
-
 ```sh
-restic -r "webdav(host.example.com:443)/./myrepo" backup ./data
+export RCLONE_CONFIG_MYBOX_TYPE=webdav
+export RCLONE_CONFIG_MYBOX_VENDOR=hetzner        # or another webdav vendor
+export RCLONE_CONFIG_MYBOX_URL=https://box.example.com
+export RCLONE_CONFIG_MYBOX_USER=u123456
+export RCLONE_CONFIG_MYBOX_PASS="$(rclone obscure 'secret')"
+
+restic -r rclone:MYBOX:restic/myrepo backup ./data
 ```
 
-with `WEBDAV_USERNAME` and `WEBDAV_PASSWORD` set in the environment.
+## Daily workflow
+
+`.github/workflows/daily-webdav-image.yml` runs every day:
+
+1. merges upstream `master` into this fork (keeps docs/workflow current),
+2. resolves the current upstream restic version,
+3. builds and pushes a multi-arch (amd64/arm64) image with tags
+   `latest`, `<restic-version>` and `<restic-version>-<YYYYMMDD>`,
+4. publishes/publishes-daily a GitHub release describing the images.
 
 ## Manual trigger
-
-Run the workflow from the Actions tab (`Daily webdav image`, `Run workflow`)
-or:
 
 ```sh
 gh workflow run "Daily webdav image"
