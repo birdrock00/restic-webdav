@@ -2,6 +2,7 @@
 # that must be included for provenance reasons.  These ignores
 # are strictly for hygienic build.
 *
+!/restic.linux_*
 !/*.go
 !/go.*
 !/cmd/*
