@@ -1,0 +1,14 @@
+# Container image for restic with the optional `webdav` backend compiled in.
+#
+# The restic binaries are built by the daily workflow with
+#   go run build.go -t webdav --goos linux --goarch <arch>
+# (upstream default build tags plus `webdav`) and copied into plain Alpine,
+# mirroring the layout of the official restic image (/usr/bin/restic).
+FROM alpine:3.22
+
+ARG TARGETARCH
+RUN apk add --no-cache ca-certificates openssh-client
+
+COPY restic.linux_${TARGETARCH} /usr/bin/restic
+
+ENTRYPOINT ["/usr/bin/restic"]
