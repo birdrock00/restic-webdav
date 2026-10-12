@@ -1,0 +1,89 @@
+name: Daily webdav image
+
+on:
+  schedule:
+    - cron: '40 6 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Merge upstream restic master
+        run: |
+          git config user.name "daily-webdav-workflow"
+          git config user.email "daily-webdav-workflow@users.noreply.github.com"
+          git remote add upstream https://github.com/restic/restic.git
+          git fetch --tags upstream master
+          if git merge --no-edit upstream/master; then
+            git push origin "HEAD:${{ github.ref_name }}"
+          else
+            echo "::warning::upstream merge conflicted, building last merged state"
+            git merge --abort
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build restic with webdav backend
+        run: |
+          set -euo pipefail
+          for arch in amd64 arm64; do
+            go run build.go -t webdav --goos linux --goarch "$arch" -o "restic.linux_${arch}"
+          done
+          ./restic.linux_amd64 version
+          echo "RESTIC_VERSION=$(./restic.linux_amd64 version | awk '{print $2}')" >> "$GITHUB_ENV"
+          echo "BUILD_DATE=$(date -u +%Y%m%d)" >> "$GITHUB_ENV"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.webdav
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ env.RESTIC_VERSION }}
+            ${{ env.IMAGE_NAME }}:${{ env.RESTIC_VERSION }}-${{ env.BUILD_DATE }}
+
+      - name: Publish daily release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="webdav-${BUILD_DATE}"
+          NOTES="restic ${RESTIC_VERSION} built with the optional webdav backend.
+
+          Container images:
+          * \`${IMAGE_NAME}:latest\`
+          * \`${IMAGE_NAME}:${RESTIC_VERSION}-${BUILD_DATE}\`
+
+          Binaries include the upstream default build tags plus \`webdav\`."
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" \
+              --title "restic+webdav ${RESTIC_VERSION} (${BUILD_DATE})" \
+              --notes "$NOTES"
+          fi
+          gh release upload "$TAG" restic.linux_amd64 restic.linux_arm64 --clobber
