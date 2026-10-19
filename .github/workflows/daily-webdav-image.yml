@@ -26,8 +26,11 @@ jobs:
           git config user.name "daily-webdav-workflow"
           git config user.email "daily-webdav-workflow@users.noreply.github.com"
           git remote add upstream https://github.com/restic/restic.git
-          git fetch --tags upstream master
-          if git merge --no-edit upstream/master; then
+          # Fetch upstream WITHOUT tags: this fork carries release tags that
+          # collide with restic upstream tags of the same name, which makes a
+          # --tags fetch abort with "would clobber existing tag" (exit 1).
+          git fetch --no-tags upstream master
+          if git merge --no-edit FETCH_HEAD; then
             git push origin "HEAD:${{ github.ref_name }}"
           else
             echo "::warning::upstream merge conflicted, building last merged state"
