@@ -30,11 +30,33 @@ jobs:
           # collide with restic upstream tags of the same name, which makes a
           # --tags fetch abort with "would clobber existing tag" (exit 1).
           git fetch --no-tags upstream master
+          before=$(git rev-parse HEAD)
           if git merge --no-edit FETCH_HEAD; then
-            git push origin "HEAD:${{ github.ref_name }}"
+            :
           else
-            echo "::warning::upstream merge conflicted, building last merged state"
-            git merge --abort
+            # Upstream restic maintains its own .github workflows (each guarded
+            # by `if: github.repository == 'restic/restic'`, so they never run
+            # in this fork). If their churn conflicts, keep this fork's .github.
+            git checkout --ours -- .github || true
+            git add .github || true
+            if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
+              echo "::warning::upstream merge conflicted, building last merged state"
+              git merge --abort
+            else
+              git commit --no-edit
+            fi
+          fi
+          if [ "$(git rev-parse HEAD)" != "$before" ]; then
+            # A new merge commit exists. Keep the fork's .github byte-identical
+            # before pushing: GITHUB_TOKEN only has `contents: write` (no
+            # `workflows`), so pushing any change under .github/workflows from
+            # the default branch is rejected by the remote. Upstream workflow
+            # churn is irrelevant here anyway - its workflows are all guarded
+            # to run only on restic/restic.
+            git rm -r --cached -q -- .github
+            git restore --source HEAD^1 --staged --worktree -- .github
+            git commit --amend --no-edit
+            git push origin "HEAD:${{ github.ref_name }}"
           fi
 
       - name: Resolve upstream restic version
