@@ -372,6 +372,62 @@ func BenchmarkArchiverSaveFileSmall(b *testing.B) {
 	}
 }
 
+func BenchmarkArchiverSaveFileConcurrent(b *testing.B) {
+	const fileSize = 4 * 1024
+	const numFiles = 64
+
+	d := TestDir{}
+	for i := 0; i < numFiles; i++ {
+		d[fmt.Sprintf("file%d", i)] = TestFile{
+			Content: string(rtest.Random(23+i, fileSize)),
+		}
+	}
+
+	b.SetBytes(fileSize * numFiles)
+
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		tempdir, repo := prepareTempdirRepoSrc(b, d)
+
+		arch := New(repo, fs.Track{FS: fs.NewLocal()}, Options{})
+		arch.Error = func(item string, err error) error {
+			b.Errorf("archiver error for %v: %v", item, err)
+			return err
+		}
+		b.StartTimer()
+
+		err := repo.WithBlobUploader(context.Background(), func(ctx context.Context, uploader restic.BlobSaverWithAsync) error {
+			wg, ctx := errgroup.WithContext(ctx)
+			arch.runWorkers(ctx, wg, uploader)
+
+			var futures []futureNode
+			for j := 0; j < numFiles; j++ {
+				filename := filepath.Join(tempdir, fmt.Sprintf("file%d", j))
+				file, err := arch.FS.OpenFile(filename, fs.O_NOFOLLOW, false)
+				if err != nil {
+					b.Fatal(err)
+				}
+
+				fn := arch.fileSaver.Save(ctx, "/", filename, file, func() {}, func() {}, func(*data.Node, ItemStats) {})
+				futures = append(futures, fn)
+			}
+
+			for _, fn := range futures {
+				fnr := fn.take(ctx)
+				if fnr.err != nil {
+					b.Fatal(fnr.err)
+				}
+			}
+
+			arch.stopWorkers()
+			return wg.Wait()
+		})
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func BenchmarkArchiverSaveFileLarge(b *testing.B) {
 	const fileSize = 40*1024*1024 + 1287898
 	d := TestDir{"file": TestFile{
@@ -437,11 +493,15 @@ func (repo *blobCountingSaver) SaveBlob(ctx context.Context, t restic.BlobType, 
 	return id, exists, size, err
 }
 
-func (repo *blobCountingSaver) SaveBlobAsync(ctx context.Context, t restic.BlobType, buf []byte, id restic.ID, storeDuplicate bool, cb func(newID restic.ID, known bool, size int, err error)) {
+func (repo *blobCountingSaver) SaveBlobAsync(ctx context.Context, t restic.BlobType, buf *restic.BlobBuffer, id restic.ID, storeDuplicate bool, cb func(newID restic.ID, known bool, size int, err error)) {
 	repo.saver.SaveBlobAsync(ctx, t, buf, id, storeDuplicate, func(newID restic.ID, known bool, size int, err error) {
 		repo.count(known, restic.BlobHandle{ID: newID, Type: t})
 		cb(newID, known, size, err)
 	})
+}
+
+func (repo *blobCountingSaver) BlobBufferPool() *restic.BlobBufferPool {
+	return repo.saver.BlobBufferPool()
 }
 
 func appendToFile(t testing.TB, filename string, data []byte) {
@@ -2290,7 +2350,7 @@ func (f *failSaveSaver) SaveBlob(ctx context.Context, t restic.BlobType, buf []b
 	return f.saver.SaveBlob(ctx, t, buf, id, storeDuplicate)
 }
 
-func (f *failSaveSaver) SaveBlobAsync(ctx context.Context, t restic.BlobType, buf []byte, id restic.ID, storeDuplicate bool, cb func(newID restic.ID, known bool, size int, err error)) {
+func (f *failSaveSaver) SaveBlobAsync(ctx context.Context, t restic.BlobType, buf *restic.BlobBuffer, id restic.ID, storeDuplicate bool, cb func(newID restic.ID, known bool, size int, err error)) {
 	// limit concurrency to make test reliable
 	f.semaphore <- struct{}{}
 
@@ -2310,6 +2370,10 @@ func (f *failSaveSaver) SaveBlobAsync(ctx context.Context, t restic.BlobType, bu
 		cb(newID, known, size, err)
 		<-f.semaphore
 	})
+}
+
+func (f *failSaveSaver) BlobBufferPool() *restic.BlobBufferPool {
+	return f.saver.BlobBufferPool()
 }
 
 func TestArchiverAbortEarlyOnError(t *testing.T) {

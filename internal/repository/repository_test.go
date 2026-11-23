@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/rand"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -515,6 +516,35 @@ func TestNoDoubleInit(t *testing.T) {
 	rtest.Assert(t, strings.Contains(err.Error(), "repository already contains snapshots"), "expected already contains snapshots error, got %q", err)
 }
 
+// saveOrderBackend records the types of files in the order they were saved.
+type saveOrderBackend struct {
+	backend.Backend
+	order []backend.FileType
+}
+
+func (be *saveOrderBackend) Save(ctx context.Context, h backend.Handle, rd backend.RewindReader) error {
+	be.order = append(be.order, h.Type)
+	return be.Backend.Save(ctx, h, rd)
+}
+
+// TestInitSavesConfigBeforeKey makes sure that Init uploads the config file
+// before the key file, such that a failed config write also prevents the key
+// file upload.
+func TestInitSavesConfigBeforeKey(t *testing.T) {
+	be := &saveOrderBackend{Backend: mem.New()}
+	repo, err := repository.New(be, repository.Options{})
+	rtest.OK(t, err)
+
+	rtest.OK(t, repo.Init(context.TODO(), restic.StableRepoVersion, rtest.TestPassword, nil))
+
+	keyIdx := slices.Index(be.order, backend.KeyFile)
+	configIdx := slices.Index(be.order, backend.ConfigFile)
+
+	rtest.Assert(t, keyIdx != -1, "key file was never saved")
+	rtest.Assert(t, configIdx != -1, "config file was never saved")
+	rtest.Assert(t, configIdx < keyIdx, "expected config file (index %d) to be saved before key file (index %d)", configIdx, keyIdx)
+}
+
 func TestSaveBlobAsync(t *testing.T) {
 	repo, _, _ := repository.TestRepositoryWithVersion(t, 2)
 	ctx := context.Background()
@@ -535,7 +565,7 @@ func TestSaveBlobAsync(t *testing.T) {
 		for i := range numCalls {
 			// Use unique data for each call
 			testData := fmt.Appendf(nil, "test blob data %d", i)
-			uploader.SaveBlobAsync(ctx, restic.DataBlob, testData, restic.ID{}, false,
+			uploader.SaveBlobAsync(ctx, restic.DataBlob, restic.NewBuffer(testData), restic.ID{}, false,
 				func(newID restic.ID, known bool, size int, err error) {
 					defer wg.Done()
 					resultsMutex.Lock()
@@ -566,7 +596,7 @@ func TestSaveBlobAsyncErrorHandling(t *testing.T) {
 	err := repo.WithBlobUploader(ctx, func(ctx context.Context, uploader restic.BlobSaverWithAsync) error {
 		cancel()
 		// Callback must be called even if the context is canceled
-		uploader.SaveBlobAsync(ctx, restic.DataBlob, []byte("test blob data"), restic.ID{}, false,
+		uploader.SaveBlobAsync(ctx, restic.DataBlob, restic.NewBuffer([]byte("test blob data")), restic.ID{}, false,
 			func(newID restic.ID, known bool, size int, err error) {
 				callbackCalled.Store(true)
 			})
